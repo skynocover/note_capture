@@ -15,10 +15,17 @@ export default defineConfig({
         '@': path.resolve(__dirname, './src'),
       },
     },
+    optimizeDeps: {
+      exclude: ['@vite/client', '@vite/env'],
+    },
+    build: {
+      commonjsOptions: {
+        transformMixedEsModules: true,
+      },
+    },
   }),
 
   extensionApi: 'chrome',
-  modules: ['@wxt-dev/module-react'],
   manifest: {
     permissions: [
       'tabs',
