@@ -28,6 +28,7 @@ export default defineConfig({
   extensionApi: 'chrome',
   manifest: {
     permissions: [
+      'offscreen',
       'tabs',
       'activeTab',
       'storage',

@@ -72,6 +72,14 @@ export default defineContentScript({
 
     // 初始化拖曳功能
     new TextSelectionDragger();
+
+    const screenshotSelector = new ScreenshotSelector();
+
+    browser.runtime.onMessage.addListener(async (message) => {
+      if (message.action === 'startScreenshotSelection') {
+        screenshotSelector.show(message.dataUrl);
+      }
+    });
   },
 });
 
@@ -210,5 +218,137 @@ class TextSelectionDragger {
       e.preventDefault();
       e.stopPropagation();
     });
+  }
+}
+
+class ScreenshotSelector {
+  private selector: HTMLElement;
+  private isSelecting = false;
+  private startX = 0;
+  private startY = 0;
+  private originalImage: string | null = null;
+
+  constructor() {
+    this.selector = this.createSelector();
+    this.initializeEventListeners();
+  }
+
+  private createSelector() {
+    const selector = document.createElement('div');
+    selector.style.cssText = `
+      position: fixed;
+      border: 2px solid #3b82f6;
+      background: rgba(59, 130, 246, 0.1);
+      display: none;
+      z-index: 10000;
+      cursor: move;
+    `;
+
+    // 新增確認按鈕
+    const confirmButton = document.createElement('button');
+    confirmButton.textContent = '截圖';
+    confirmButton.style.cssText = `
+      position: absolute;
+      bottom: -40px;
+      right: 0;
+      padding: 8px 16px;
+      background: #3b82f6;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    `;
+
+    confirmButton.addEventListener('click', () => {
+      this.confirmScreenshot();
+    });
+
+    selector.appendChild(confirmButton);
+    document.body.appendChild(selector);
+    return selector;
+  }
+
+  private initializeEventListeners() {
+    document.addEventListener('mousedown', (e) => {
+      if (this.selector.style.display === 'block') {
+        this.isSelecting = true;
+        this.startX = e.clientX;
+        this.startY = e.clientY;
+      }
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      if (this.isSelecting) {
+        const width = e.clientX - this.startX;
+        const height = e.clientY - this.startY;
+
+        this.selector.style.left = `${width > 0 ? this.startX : e.clientX}px`;
+        this.selector.style.top = `${height > 0 ? this.startY : e.clientY}px`;
+        this.selector.style.width = `${Math.abs(width)}px`;
+        this.selector.style.height = `${Math.abs(height)}px`;
+      }
+    });
+
+    document.addEventListener('mouseup', () => {
+      this.isSelecting = false;
+    });
+  }
+
+  show(dataUrl: string) {
+    this.originalImage = dataUrl;
+    this.selector.style.display = 'block';
+  }
+
+  private async confirmScreenshot() {
+    if (!this.originalImage) return;
+
+    const rect = this.selector.getBoundingClientRect();
+    const dpr = window.devicePixelRatio;
+
+    // 根據 devicePixelRatio 調整裁剪座標和尺寸
+    const cropData = {
+      x: rect.x * dpr,
+      y: rect.y * dpr,
+      width: rect.width * dpr,
+      height: rect.height * dpr,
+    };
+
+    const img = new Image();
+    img.src = this.originalImage;
+    await new Promise((resolve) => (img.onload = resolve));
+
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    // 設置 canvas 尺寸為裁剪後的尺寸
+    canvas.width = cropData.width;
+    canvas.height = cropData.height;
+
+    ctx.drawImage(
+      img,
+      cropData.x,
+      cropData.y,
+      cropData.width,
+      cropData.height,
+      0,
+      0,
+      cropData.width,
+      cropData.height,
+    );
+
+    // 轉換為 data URL 並傳送給 popup
+    const croppedDataUrl = canvas.toDataURL('image/png');
+    browser.runtime.sendMessage({
+      action: 'screenshotCaptured',
+      dataUrl: croppedDataUrl,
+      width: cropData.width,
+      height: cropData.height,
+    });
+    this.hide();
+  }
+
+  hide() {
+    this.selector.style.display = 'none';
   }
 }

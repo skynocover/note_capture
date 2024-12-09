@@ -13,4 +13,7 @@ export default defineBackground(() => {
     const a = await browser.sidePanel.getPanelBehavior();
     console.log({ a });
   });
+
+  // 處理截圖區域的訊息
+  browser.runtime.onMessage.addListener(async (message, sender) => {});
 });

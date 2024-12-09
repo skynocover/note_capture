@@ -1,5 +1,5 @@
 import { useCallback, useEffect } from 'react';
-import { Menu, MoreHorizontal, Share2, ArrowUpRight, Trash2, Table } from 'lucide-react';
+import { Menu, MoreHorizontal, Share2, ArrowUpRight, Trash2, Table, Camera } from 'lucide-react';
 
 import { Button } from '../ui/button';
 import { Card, CardContent } from '../ui/card';
@@ -21,6 +21,28 @@ export default function MainPage() {
         }));
 
         setArticles((prevArticles) => [...prevArticles, ...newArticles]);
+      }
+
+      // 新增處理截圖的邏輯
+      if (message.action === 'screenshotCaptured' && message.dataUrl) {
+        const newArticle: IArticleCard = {
+          id: `screenshot-${Date.now()}`,
+          title: 'Screenshot',
+          content: JSON.stringify([
+            {
+              id: crypto.randomUUID(),
+              type: 'image',
+              props: {
+                url: message.dataUrl,
+                width: message.width || 'auto',
+                height: message.height || 'auto',
+              },
+              children: [],
+            },
+          ]),
+        };
+
+        setArticles((prevArticles) => [...prevArticles, newArticle]);
       }
     };
 
@@ -73,10 +95,31 @@ export default function MainPage() {
     setArticles(articles.filter((article) => article.id !== id));
   };
 
+  const handleScreenshot = useCallback(async () => {
+    try {
+      const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
+      if (!tab.id) return;
+
+      // First capture the visible tab
+      const dataUrl = await browser.tabs.captureVisibleTab(browser.windows.WINDOW_ID_CURRENT, {
+        format: 'png',
+      });
+
+      await browser.tabs.sendMessage(tab.id, {
+        action: 'startScreenshotSelection',
+        dataUrl: dataUrl,
+      });
+
+      console.log({ dataUrl });
+    } catch (error) {
+      console.error('Failed to start screenshot selection:', error);
+    }
+  }, []);
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Main Content */}
-      <main className="max-w-4xl mx-auto p-4 pb-24 space-y-4">
+      <main className="p-4 pb-24 space-y-4">
         {/* Top Navigation */}
         <div className="bg-white rounded-lg p-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -124,6 +167,9 @@ export default function MainPage() {
             </Button>
             <Button variant="ghost" size="icon" onClick={handleCaptureTable} title="Capture Table">
               <Table className="w-4 h-4" />
+            </Button>
+            <Button variant="ghost" size="icon" onClick={handleScreenshot} title="Screenshot">
+              <Camera className="w-4 h-4" />
             </Button>
             <div className="flex-1">
               <input
