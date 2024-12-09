@@ -121,7 +121,7 @@ export function ArticleCard({
           </div>
         </div>
 
-        <BlockNoteView editor={editor} />
+        <BlockNoteView editor={editor} className="overflow-hidden" />
 
         {url && (
           <div className="flex items-center gap-2 text-sm text-gray-500 mt-2">
