@@ -1,10 +1,21 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
-import { Globe } from 'lucide-react';
+import { Edit2, Globe, Trash2 } from 'lucide-react';
 import { BlockNoteView } from '@blocknote/mantine';
 import { useCreateBlockNote } from '@blocknote/react';
 
 import { Card, CardContent } from '../ui/card';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '../ui/alert-dialog';
 
 export interface IArticleCard {
   id: string;
@@ -15,9 +26,22 @@ export interface IArticleCard {
 
 export interface IArticleCardProps extends IArticleCard {
   onEdit: (id: string, newContent: string) => void;
+  onDelete: () => void;
+  onTitleEdit?: (id: string, newTitle: string) => void;
 }
 
-export function ArticleCard({ id, title, content, url, onEdit }: IArticleCardProps) {
+export function ArticleCard({
+  id,
+  title,
+  content,
+  url,
+  onEdit,
+  onDelete,
+  onTitleEdit,
+}: IArticleCardProps) {
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [editedTitle, setEditedTitle] = useState(title);
+
   const getDomain = (url: string) => {
     try {
       const domain = new URL(url).hostname;
@@ -45,12 +69,55 @@ export function ArticleCard({ id, title, content, url, onEdit }: IArticleCardPro
     editor.onEditorContentChange(handleUpdate);
   }, [editor, id, onEdit]);
 
+  const handleTitleSubmit = () => {
+    if (onTitleEdit) {
+      onTitleEdit(id, editedTitle);
+    }
+    setIsEditingTitle(false);
+  };
+
   return (
     <Card>
       <CardContent className="p-2">
         <div className="flex gap-6">
           <div className="flex-1">
-            <h2 className="text-xl font-bold mb-2">{title}</h2>
+            {isEditingTitle ? (
+              <input
+                type="text"
+                value={editedTitle}
+                onChange={(e) => setEditedTitle(e.target.value)}
+                onBlur={handleTitleSubmit}
+                onKeyDown={(e) => e.key === 'Enter' && handleTitleSubmit()}
+                className="text-xl font-bold mb-2 w-full border-b border-gray-300 focus:outline-none focus:border-primary"
+                autoFocus
+              />
+            ) : (
+              <h2
+                className="text-xl font-bold mb-2 cursor-pointer hover:text-gray-700"
+                onClick={() => setIsEditingTitle(true)}
+              >
+                {title}
+              </h2>
+            )}
+          </div>
+          <div className="flex items-center gap-4">
+            <AlertDialog>
+              <AlertDialogTrigger>
+                <Trash2 className="w-5 h-5" />
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>確認刪除</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    確定要刪除這篇文章嗎？此操作無法復原。
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>取消</AlertDialogCancel>
+                  <AlertDialogAction onClick={onDelete}>確認刪除</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
         </div>
 

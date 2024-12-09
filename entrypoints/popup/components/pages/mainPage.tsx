@@ -1,5 +1,5 @@
 import { useCallback, useEffect } from 'react';
-import { Menu, MoreHorizontal, Share2, ArrowUpRight } from 'lucide-react';
+import { Menu, MoreHorizontal, Share2, ArrowUpRight, Trash2, Table } from 'lucide-react';
 
 import { Button } from '../ui/button';
 import { Card, CardContent } from '../ui/card';
@@ -42,12 +42,35 @@ export default function MainPage() {
     }
   }, []);
 
+  // Add new blank article
+  const handleAddBlankArticle = useCallback(() => {
+    const id = crypto.randomUUID();
+    const newArticle: IArticleCard = {
+      id: `article-${Date.now()}`,
+      title: 'New Article',
+      content: `[{"id":"${id}","type":"paragraph","props":{"textColor":"default","backgroundColor":"default","textAlignment":"left"},"content":[],"children":[]},{"id":"f305077d-1cc6-4d62-a766-2f6eb5a1279c","type":"paragraph","props":{"textColor":"default","backgroundColor":"default","textAlignment":"left"},"content":[],"children":[]}]`,
+    };
+    setArticles((prevArticles) => [...prevArticles, newArticle]);
+  }, []);
+
+  // Modify onEdit to handle both content and title updates
   const onEdit = (id: string, newContent: string) => {
     setArticles(
       articles.map((article) =>
         article.id === id ? { ...article, content: newContent } : article,
       ),
     );
+  };
+
+  const onTitleEdit = (id: string, newTitle: string) => {
+    setArticles(
+      articles.map((article) => (article.id === id ? { ...article, title: newTitle } : article)),
+    );
+  };
+
+  // Add delete handler
+  const onDelete = (id: string) => {
+    setArticles(articles.filter((article) => article.id !== id));
   };
 
   return (
@@ -67,7 +90,13 @@ export default function MainPage() {
         </div>
 
         {articles.map((article) => (
-          <ArticleCard key={article.id} {...article} onEdit={onEdit} />
+          <ArticleCard
+            key={article.id}
+            {...article}
+            onEdit={onEdit}
+            onDelete={() => onDelete(article.id)}
+            onTitleEdit={onTitleEdit}
+          />
         ))}
 
         {/* Database Comparison Card */}
@@ -87,11 +116,14 @@ export default function MainPage() {
           </CardContent>
         </Card>
 
-        {/* Chat Input */}
+        {/* Modified Chat Input section */}
         <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t">
           <div className="max-w-4xl mx-auto flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={handleCaptureTable}>
+            <Button variant="ghost" size="icon" onClick={handleAddBlankArticle}>
               <span className="text-2xl">+</span>
+            </Button>
+            <Button variant="ghost" size="icon" onClick={handleCaptureTable} title="Capture Table">
+              <Table className="w-4 h-4" />
             </Button>
             <div className="flex-1">
               <input
