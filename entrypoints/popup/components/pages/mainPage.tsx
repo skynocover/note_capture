@@ -1,8 +1,12 @@
-import { Bell, Menu, MoreHorizontal, Share2, Globe, ArrowUpRight } from 'lucide-react';
+import { Menu, MoreHorizontal, Share2, ArrowUpRight } from 'lucide-react';
 import { Button } from '../ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
+import { Card, CardContent } from '../ui/card';
+import { ArticleCard } from '../molecules/ArticleCard';
+import { useApp } from '../../AppContext';
 
 export default function MainPage() {
+  const { articles } = useApp();
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Main Content */}
@@ -19,24 +23,9 @@ export default function MainPage() {
           </div>
         </div>
 
-        {/* Article Card */}
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex gap-6">
-              <div className="flex-1">
-                <h2 className="text-2xl font-bold mb-4">
-                  Product Manager vs. Product Owner: Key Differences
-                </h2>
-                <div className="flex items-center gap-2 text-gray-500 text-sm">
-                  <span className="w-4 h-4 bg-gray-200 rounded" />
-                  <span>Product Manager vs. Product Owner...</span>
-                  <span>justanotherpm.com</span>
-                  <span>Fetched 1d ago</span>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        {articles.map((article) => (
+          <ArticleCard key={article.id} {...article} />
+        ))}
 
         {/* Database Comparison Card */}
         <Card>
@@ -51,23 +40,6 @@ export default function MainPage() {
                 資料庫選擇的關鍵因素
                 <ArrowUpRight className="w-4 h-4" />
               </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Easy Scraper Card */}
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-xl font-bold">Easy Scraper</h2>
-                <div className="flex items-center gap-2 text-sm text-gray-500 mt-2">
-                  <Globe className="w-4 h-4" />
-                  <span>easyscraper.com</span>
-                  <span className="text-red-500">Could not load URL</span>
-                </div>
-              </div>
-              <Globe className="w-12 h-12 text-gray-200" />
             </div>
           </CardContent>
         </Card>
