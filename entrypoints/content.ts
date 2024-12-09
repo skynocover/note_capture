@@ -223,14 +223,63 @@ class TextSelectionDragger {
 
 class ScreenshotSelector {
   private selector: HTMLElement;
-  private isSelecting = false;
-  private startX = 0;
-  private startY = 0;
   private originalImage: string | null = null;
+  private static lastSelection: {
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+  } | null = null;
 
   constructor() {
     this.selector = this.createSelector();
+    const confirmButton = this.createConfirmButton();
+    this.selector.appendChild(confirmButton);
     this.initializeEventListeners();
+  }
+
+  private createConfirmButton() {
+    // 修改確認按鈕的樣式和位置
+    const confirmButton = document.createElement('button');
+    confirmButton.innerHTML = `
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+            <circle cx="12" cy="13" r="4"/>
+          </svg>
+        `;
+    confirmButton.style.cssText = `
+          position: absolute;
+          left: 50%;
+          top: 50%;
+          transform: translate(-50%, -50%);
+          padding: 8px;
+          background: rgba(255, 255, 255);
+          color: #3b82f6;
+          border: none;
+          border-radius: 50%;
+          cursor: pointer;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: all 0.2s;
+        `;
+
+    confirmButton.addEventListener('mouseenter', () => {
+      confirmButton.style.background = '#3b82f6';
+      confirmButton.style.color = 'white';
+    });
+
+    confirmButton.addEventListener('mouseleave', () => {
+      confirmButton.style.background = 'rgba(255, 255, 255)';
+      confirmButton.style.color = '#3b82f6';
+    });
+
+    confirmButton.addEventListener('click', () => {
+      this.confirmScreenshot();
+    });
+
+    return confirmButton;
   }
 
   private createSelector() {
@@ -244,86 +293,112 @@ class ScreenshotSelector {
       cursor: move;
     `;
 
-    // 修改確認按鈕的樣式和位置
-    const confirmButton = document.createElement('button');
-    confirmButton.innerHTML = `
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-        <circle cx="12" cy="13" r="4"/>
-      </svg>
-    `;
-    confirmButton.style.cssText = `
+    // Remove other resize handles and only add the bottom-right handle
+    const resizeHandle = document.createElement('div');
+    resizeHandle.style.cssText = `
       position: absolute;
-      left: 50%;
-      top: 50%;
-      transform: translate(-50%, -50%);
-      padding: 8px;
-      background: rgba(255, 255, 255, 0.7);
-      color: #3b82f6;
-      border: none;
-      border-radius: 50%;
-      cursor: pointer;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: all 0.2s;
+      width: 10px;
+      height: 10px;
+      background: white;
+      border: 2px solid #3b82f6;
+      right: -5px;
+      bottom: -5px;
+      cursor: se-resize;
     `;
+    selector.appendChild(resizeHandle);
 
-    confirmButton.addEventListener('mouseenter', () => {
-      confirmButton.style.background = '#3b82f6';
-      confirmButton.style.color = 'white';
-    });
-
-    confirmButton.addEventListener('mouseleave', () => {
-      confirmButton.style.background = 'rgba(255, 255, 255, 0.7)';
-      confirmButton.style.color = '#3b82f6';
-    });
-
-    confirmButton.addEventListener('click', () => {
-      this.confirmScreenshot();
-    });
-
-    selector.appendChild(confirmButton);
     document.body.appendChild(selector);
     return selector;
   }
 
   private initializeEventListeners() {
+    let isResizing = false;
+    let isDragging = false;
+    let dragStartX = 0;
+    let dragStartY = 0;
+
+    // Add mouseover event listener
+    this.selector.addEventListener('mouseover', (e) => {
+      const target = e.target as HTMLElement;
+      if (target.style.cursor === 'se-resize') return;
+      this.selector.style.cursor = 'move';
+    });
+
+    // Add mouseout event listener
+    this.selector.addEventListener('mouseout', (e) => {
+      if (!isDragging) {
+        this.selector.style.cursor = 'move';
+      }
+    });
+
     document.addEventListener('mousedown', (e) => {
-      if (this.selector.style.display === 'block') {
-        this.isSelecting = true;
-        this.startX = e.clientX;
-        this.startY = e.clientY;
+      if (this.selector.style.display !== 'block') return;
+
+      const target = e.target as HTMLElement;
+
+      // Check if the resize handle is clicked
+      if (target.style.cursor === 'se-resize') {
+        isResizing = true;
+        e.stopPropagation();
+        return;
+      }
+
+      // 如果已有選取範圍且點擊在選取範圍內，進入拖曳模式
+      const rect = this.selector.getBoundingClientRect();
+      if (
+        e.clientX >= rect.left &&
+        e.clientX <= rect.right &&
+        e.clientY >= rect.top &&
+        e.clientY <= rect.bottom
+      ) {
+        isDragging = true;
+        dragStartX = e.clientX - rect.left;
+        dragStartY = e.clientY - rect.top;
+        this.selector.style.cursor = 'move';
+        e.stopPropagation();
+        return;
       }
     });
 
     document.addEventListener('mousemove', (e) => {
-      if (this.isSelecting) {
-        const width = e.clientX - this.startX;
-        const height = e.clientY - this.startY;
-
-        this.selector.style.left = `${width > 0 ? this.startX : e.clientX}px`;
-        this.selector.style.top = `${height > 0 ? this.startY : e.clientY}px`;
-        this.selector.style.width = `${Math.abs(width)}px`;
-        this.selector.style.height = `${Math.abs(height)}px`;
+      if (isResizing) {
+        // Handle resizing from the bottom-right corner
+        const rect = this.selector.getBoundingClientRect();
+        this.selector.style.width = `${e.clientX - rect.left}px`;
+        this.selector.style.height = `${e.clientY - rect.top}px`;
+        e.preventDefault();
+      } else if (isDragging) {
+        // 處理拖曳
+        const newLeft = e.clientX - dragStartX;
+        const newTop = e.clientY - dragStartY;
+        this.selector.style.left = `${newLeft}px`;
+        this.selector.style.top = `${newTop}px`;
+        e.preventDefault();
       }
     });
 
     document.addEventListener('mouseup', () => {
-      this.isSelecting = false;
+      isResizing = false;
+      isDragging = false;
+      this.selector.style.cursor = 'move';
     });
-  }
 
-  show(dataUrl: string) {
-    this.originalImage = dataUrl;
-    this.selector.style.display = 'block';
+    // Add keyboard event listener for ESC key
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && this.selector.style.display === 'block') {
+        this.hide();
+      }
+    });
   }
 
   private async confirmScreenshot() {
     if (!this.originalImage) return;
 
     const rect = this.selector.getBoundingClientRect();
+
+    // Save the current selection
+    this.saveSelection(rect);
+
     const dpr = window.devicePixelRatio;
 
     // 根據 devicePixelRatio 調整裁剪座標和尺寸
@@ -367,6 +442,44 @@ class ScreenshotSelector {
       height: cropData.height,
     });
     this.hide();
+  }
+
+  private saveSelection(rect: DOMRect) {
+    ScreenshotSelector.lastSelection = {
+      left: rect.left,
+      top: rect.top,
+      width: rect.width,
+      height: rect.height,
+    };
+  }
+
+  private loadLastSelection(): { left: number; top: number; width: number; height: number } | null {
+    return ScreenshotSelector.lastSelection;
+  }
+
+  show(dataUrl: string) {
+    this.originalImage = dataUrl;
+    this.selector.style.display = 'block';
+
+    // Try to load last selection
+    const lastSelection = this.loadLastSelection();
+
+    if (lastSelection) {
+      // Use last selection if available
+      this.selector.style.left = `${lastSelection.left}px`;
+      this.selector.style.top = `${lastSelection.top}px`;
+      this.selector.style.width = `${lastSelection.width}px`;
+      this.selector.style.height = `${lastSelection.height}px`;
+    } else {
+      // Default to full window if no saved selection
+      const windowWidth = window.innerWidth;
+      const windowHeight = window.innerHeight;
+
+      this.selector.style.left = '0px';
+      this.selector.style.top = '0px';
+      this.selector.style.width = `${windowWidth}px`;
+      this.selector.style.height = `${windowHeight}px`;
+    }
   }
 
   hide() {
