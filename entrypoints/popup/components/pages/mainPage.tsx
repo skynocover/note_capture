@@ -76,7 +76,7 @@ export default function MainPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Main Content */}
-      <main className="max-w-4xl mx-auto p-4 space-y-4">
+      <main className="max-w-4xl mx-auto p-4 pb-24 space-y-4">
         {/* Top Navigation */}
         <div className="bg-white rounded-lg p-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
