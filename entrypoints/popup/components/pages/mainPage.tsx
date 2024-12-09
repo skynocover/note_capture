@@ -1,11 +1,46 @@
+import { useCallback, useEffect } from 'react';
 import { Menu, MoreHorizontal, Share2, ArrowUpRight } from 'lucide-react';
+
 import { Button } from '../ui/button';
 import { Card, CardContent } from '../ui/card';
+import { IArticleCard } from '../molecules/ArticleCard';
 import { ArticleCard } from '../molecules/ArticleCard';
 import { useApp } from '../../AppContext';
 
 export default function MainPage() {
   const { articles, setArticles } = useApp();
+
+  // 監聽抓取table的回應
+  useEffect(() => {
+    const messageListener = (message: any) => {
+      if (message.action === 'capturedTables' && message.tables) {
+        const newArticles: IArticleCard[] = message.tables.map((table: any, index: number) => ({
+          id: `table-${Date.now()}-${index}`,
+          title: `Captured Table ${index + 1}`,
+          content: JSON.stringify([table]),
+        }));
+
+        setArticles((prevArticles) => [...prevArticles, ...newArticles]);
+      }
+    };
+
+    browser.runtime.onMessage.addListener(messageListener);
+    return () => browser.runtime.onMessage.removeListener(messageListener);
+  }, [setArticles]);
+
+  // 送出抓取table的事件
+  const handleCaptureTable = useCallback(async () => {
+    try {
+      const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
+      if (!tab.id) return;
+
+      await browser.tabs.sendMessage(tab.id, {
+        action: 'captureTables',
+      });
+    } catch (error) {
+      console.error('Failed to capture tables:', error);
+    }
+  }, []);
 
   const onEdit = (id: string, newContent: string) => {
     setArticles(
@@ -41,7 +76,7 @@ export default function MainPage() {
             <h2 className="text-xl mb-4">比較資料庫</h2>
             <div className="space-y-4">
               <Button variant="outline" className="w-full justify-between">
-                不同資料庫的特性比較
+                不同資料庫的性比較
                 <ArrowUpRight className="w-4 h-4" />
               </Button>
               <Button variant="outline" className="w-full justify-between">
@@ -55,7 +90,7 @@ export default function MainPage() {
         {/* Chat Input */}
         <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t">
           <div className="max-w-4xl mx-auto flex items-center gap-4">
-            <Button variant="ghost" size="icon">
+            <Button variant="ghost" size="icon" onClick={handleCaptureTable}>
               <span className="text-2xl">+</span>
             </Button>
             <div className="flex-1">

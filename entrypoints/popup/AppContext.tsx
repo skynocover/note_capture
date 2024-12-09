@@ -1,10 +1,10 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 
-import { IArticleCard, ArticleCard } from './components/molecules/ArticleCard';
+import { IArticleCard } from './components/molecules/ArticleCard';
 
 interface AppContextType {
   articles: IArticleCard[];
-  setArticles: (articles: IArticleCard[]) => void;
+  setArticles: React.Dispatch<React.SetStateAction<IArticleCard[]>>;
 }
 
 const defaultArticle: IArticleCard = {

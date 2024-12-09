@@ -33,6 +33,41 @@ export default defineContentScript({
 
         return true;
       }
+      if (message.action === 'captureTables') {
+        const tables = Array.from(document.querySelectorAll('table')).map((table) => {
+          // 將 table 轉換成 BlockNote 格式
+          const rows = Array.from(table.rows);
+          const tableData = {
+            id: crypto.randomUUID(),
+            type: 'table',
+            props: {
+              textColor: 'default',
+            },
+            content: {
+              type: 'tableContent',
+              columnWidths: Array(table.rows[0]?.cells.length || 0).fill(null),
+              rows: rows.map((row) => ({
+                cells: Array.from(row.cells).map((cell) => [
+                  {
+                    type: 'text',
+                    text: (cell.textContent || '').trim(),
+                    styles: {},
+                  },
+                ]),
+              })),
+            },
+            children: [],
+          };
+
+          return tableData;
+        });
+
+        browser.runtime.sendMessage({
+          action: 'capturedTables',
+          tables,
+        });
+        return true;
+      }
     });
 
     // 初始化拖曳功能
@@ -121,11 +156,11 @@ class TextSelectionDragger {
    * 初始化所有事件監聽器
    * 包含：
    * 1. 文字選擇事件 (selectionchange)
-   * 2. 拖曳開始事件 (dragstart)
+   * 2. 拖曳開始件 (dragstart)
    * 3. 拖曳結束事件 (dragend)
    */
   private initializeEventListeners() {
-    // 監聽文字選擇事件
+    // 監聽文字擇事件
     document.addEventListener('selectionchange', () => {
       const selection = window.getSelection();
       const selectedText = selection?.toString().trim();

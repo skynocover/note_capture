@@ -1,9 +1,10 @@
-import { Card, CardContent } from '../ui/card';
-import { Globe, Edit2 } from 'lucide-react';
+import { useEffect } from 'react';
 
+import { Globe } from 'lucide-react';
 import { BlockNoteView } from '@blocknote/mantine';
 import { useCreateBlockNote } from '@blocknote/react';
-import { useEffect } from 'react';
+
+import { Card, CardContent } from '../ui/card';
 
 export interface IArticleCard {
   id: string;
@@ -26,8 +27,10 @@ export function ArticleCard({ id, title, content, url, onEdit }: IArticleCardPro
     }
   };
 
+  console.log({ content });
+
   const editor = useCreateBlockNote({
-    initialContent: content ? JSON.parse(content) : undefined,
+    initialContent: JSON.parse(content),
   });
 
   // 監聽編輯器內容變化
