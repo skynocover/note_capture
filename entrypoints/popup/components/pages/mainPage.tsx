@@ -5,7 +5,15 @@ import { ArticleCard } from '../molecules/ArticleCard';
 import { useApp } from '../../AppContext';
 
 export default function MainPage() {
-  const { articles } = useApp();
+  const { articles, setArticles } = useApp();
+
+  const onEdit = (id: string, newContent: string) => {
+    setArticles(
+      articles.map((article) =>
+        article.id === id ? { ...article, content: newContent } : article,
+      ),
+    );
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -24,7 +32,7 @@ export default function MainPage() {
         </div>
 
         {articles.map((article) => (
-          <ArticleCard key={article.id} {...article} />
+          <ArticleCard key={article.id} {...article} onEdit={onEdit} />
         ))}
 
         {/* Database Comparison Card */}
