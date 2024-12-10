@@ -7,9 +7,12 @@ import { IArticleCard } from '../molecules/ArticleCard';
 import { ArticleCard } from '../molecules/ArticleCard';
 import { useApp } from '../../AppContext';
 import { NotionKeysManager } from '../organisms/NotionKeyManager';
+import { ImportModal } from '../organisms/ImportModal';
+import { ImportSettings } from '../../lib/notion/notion';
 
 export default function MainPage() {
   const [isKeyModalOpen, setIsKeyModalOpen] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const { articles, setArticles } = useApp();
 
   // 監聽抓取table的回應
@@ -118,6 +121,10 @@ export default function MainPage() {
     }
   }, []);
 
+  const handleImportConfirm = (settings: ImportSettings) => {
+    console.log({ settings });
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Main Content */}
@@ -175,6 +182,14 @@ export default function MainPage() {
             <Button variant="ghost" size="icon" onClick={handleScreenshot} title="Screenshot">
               <Camera className="w-4 h-4" />
             </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setIsImportModalOpen(true)}
+              title="Import from Notion"
+            >
+              <ArrowUpRight className="w-4 h-4" />
+            </Button>
             <div className="flex-1">
               <input
                 type="text"
@@ -186,6 +201,11 @@ export default function MainPage() {
           </div>
         </div>
         <NotionKeysManager isOpen={isKeyModalOpen} onOpenChange={setIsKeyModalOpen} />
+        <ImportModal
+          isOpen={isImportModalOpen}
+          onClose={() => setIsImportModalOpen(false)}
+          onConfirm={handleImportConfirm}
+        />
       </main>
     </div>
   );

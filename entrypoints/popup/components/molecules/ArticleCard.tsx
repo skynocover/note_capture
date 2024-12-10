@@ -51,7 +51,7 @@ export function ArticleCard({
     }
   };
 
-  console.log({ content });
+  //   console.log({ content });
 
   const editor = useCreateBlockNote({
     initialContent: JSON.parse(content),
