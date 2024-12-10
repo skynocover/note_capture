@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Menu, MoreHorizontal, Share2, ArrowUpRight, Trash2, Table, Camera } from 'lucide-react';
 
 import { Button } from '../ui/button';
@@ -6,8 +6,10 @@ import { Card, CardContent } from '../ui/card';
 import { IArticleCard } from '../molecules/ArticleCard';
 import { ArticleCard } from '../molecules/ArticleCard';
 import { useApp } from '../../AppContext';
+import { NotionKeysManager } from '../organisms/NotionKeyManager';
 
 export default function MainPage() {
+  const [isKeyModalOpen, setIsKeyModalOpen] = useState(false);
   const { articles, setArticles } = useApp();
 
   // 監聽抓取table的回應
@@ -128,7 +130,9 @@ export default function MainPage() {
           </div>
           <div className="flex items-center gap-4">
             <Share2 className="w-5 h-5" />
-            <MoreHorizontal className="w-5 h-5" />
+            <Button variant="ghost" size="icon" onClick={() => setIsKeyModalOpen(true)}>
+              <MoreHorizontal className="w-5 h-5" />
+            </Button>
           </div>
         </div>
 
@@ -181,6 +185,7 @@ export default function MainPage() {
             <div className="w-8 h-8 bg-green-500 rounded-lg" />
           </div>
         </div>
+        <NotionKeysManager isOpen={isKeyModalOpen} onOpenChange={setIsKeyModalOpen} />
       </main>
     </div>
   );
