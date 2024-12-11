@@ -23,7 +23,7 @@ interface NotionContextProps {
   pages: NotionPage[];
   setPages: (pages: NotionPage[]) => void;
   connectNotion: () => Promise<void>;
-  loadPages: (query: string) => Promise<void>;
+  loadPages: ({ query, page_size }: { query: string; page_size?: number }) => Promise<void>;
 
   // notion keys 管理
   notionKeys: NotionKey[];
@@ -75,7 +75,7 @@ export const NotionProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   useEffect(() => {
     if (notionService) {
       connectNotion();
-      loadPages('');
+      loadPages({ query: '', page_size: 10 });
     }
   }, [notionService]);
 
@@ -87,11 +87,11 @@ export const NotionProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     setWorkspace(workspaceData);
   };
 
-  const loadPages = async (query: string) => {
+  const loadPages = async ({ query, page_size = 10 }: { query: string; page_size?: number }) => {
     if (!notionService) {
       throw new Error('Notion client not initialized');
     }
-    const pagesData = await notionService.fetchPages(query);
+    const pagesData = await notionService.fetchPages({ query, page_size });
     setPages(pagesData);
   };
 

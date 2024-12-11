@@ -14,6 +14,7 @@ import {
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { useDebounce } from '../../hooks/useDebounce';
+import { NotionPage } from '../../lib/notion/notion.d';
 
 interface ImportModalProps {
   isOpen: boolean;
@@ -37,17 +38,15 @@ export const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onCon
 
   const [selectedDatabase, setSelectedDatabase] = useState<string>('');
   const [selectedPage, setSelectedPage] = useState<string>('');
-  const [recentDatabases, setRecentDatabases] = useState<Array<{ id: string; title: string }>>([]);
-  const [showNewDatabase, setShowNewDatabase] = useState(false);
-  const [newDatabaseTitle, setNewDatabaseTitle] = useState('');
+  const [recentPages, setRecentPages] = useState<NotionPage[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const debouncedQuery = useDebounce(searchQuery, 300);
 
   // 載入最近使用的資料庫
   useEffect(() => {
-    browser.storage.local.get('recentDatabases').then((result) => {
-      const saved = JSON.parse(result.recentDatabases || '[]');
-      setRecentDatabases(saved);
+    browser.storage.local.get('recentPages').then((result) => {
+      const saved = JSON.parse(result.recentPages || '[]');
+      setRecentPages(saved);
     });
   }, []);
 
@@ -60,7 +59,7 @@ export const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onCon
   // Add effect for debounced search
   useEffect(() => {
     if (selectedKeyId) {
-      loadPages(debouncedQuery);
+      loadPages({ query: debouncedQuery, page_size: 6 });
     }
   }, [debouncedQuery, selectedKeyId]);
 
@@ -70,25 +69,9 @@ export const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onCon
       setLoading(true);
       setError('');
       setSelectedDatabase(databaseId);
-      await loadPages(debouncedQuery);
+      await loadPages({ query: debouncedQuery, page_size: 6 });
     } catch (err) {
       setError('Failed to load pages');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // 新增資料庫
-  const handleCreateDatabase = async () => {
-    try {
-      setLoading(true);
-      // 假設這是從 NotionContext 來的方法
-      //   await createDatabase(newDatabaseTitle);
-      await loadPages(debouncedQuery);
-      setShowNewDatabase(false);
-      setNewDatabaseTitle('');
-    } catch (err) {
-      setError('Failed to create database');
     } finally {
       setLoading(false);
     }
@@ -115,23 +98,23 @@ export const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onCon
 
   // Add refresh handler
   const handleRefresh = async () => {
-    await loadPages(debouncedQuery);
+    await loadPages({ query: debouncedQuery, page_size: 6 });
   };
 
   if (!isOpen) return null;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[625px] max-h-[80vh] overflow-y-auto scroll-smooth">
+      <DialogContent className="max-h-[80vh] overflow-y-auto scroll-smooth">
         <DialogHeader>
           <DialogTitle>Import from Notion</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4 w-full">
+        <div className="space-y-4 min-w-[320px]">
           {/* API Key Selection with Refresh Button */}
-          <div className="space-y-2">
+          <div className="space-y-2 w-full">
             <label className="text-sm font-medium">Select API Key</label>
-            <div className="flex gap-2">
+            <div className="flex gap-2 w-full">
               <Select
                 value={selectedKeyId || ''}
                 onValueChange={handleKeySelect}
@@ -162,7 +145,7 @@ export const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onCon
           {workspace && (
             <>
               {/* Search Input */}
-              <div className="space-y-2 w-full">
+              <div className="space-y-2 w-full max-w-full">
                 <label className="text-sm font-medium">Search {workspace.name} Pages</label>
                 <div className="relative w-full">
                   <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -170,61 +153,37 @@ export const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onCon
                     placeholder="Search pages..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-8 w-full"
+                    className="pl-8 w-full max-w-full"
                   />
                 </div>
               </div>
 
               {/* Recent Databases Grid */}
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Recent Databases</label>
-                <div className="grid grid-cols-2 gap-2">
-                  {recentDatabases.map((db) => (
+              <div className="space-y-2 w-full">
+                <label className="text-sm font-medium">Recent Pages</label>
+                <div className="flex flex-col gap-2 w-full">
+                  {recentPages.map((page) => (
                     <Button
-                      key={db.id}
-                      variant={selectedDatabase === db.id ? 'default' : 'outline'}
-                      className="w-full justify-start text-left h-auto py-2 px-3"
-                      onClick={() => handleDatabaseSelect(db.id)}
+                      key={page.id}
+                      variant={selectedPage === page.id ? 'default' : 'outline'}
+                      className="w-full justify-start text-left h-auto py-2 px-3 truncate max-w-full"
+                      onClick={() => setSelectedPage(page.id)}
                     >
-                      {db.title}
+                      {page.title}
                     </Button>
                   ))}
                 </div>
               </div>
 
-              {/* Create New Database */}
-              <div className="space-y-2">
-                <Button
-                  variant="link"
-                  className="p-0 h-auto"
-                  onClick={() => setShowNewDatabase(!showNewDatabase)}
-                >
-                  + Create New Database
-                </Button>
-
-                {showNewDatabase && (
-                  <div className="flex gap-2">
-                    <Input
-                      value={newDatabaseTitle}
-                      onChange={(e) => setNewDatabaseTitle(e.target.value)}
-                      placeholder="Database title"
-                    />
-                    <Button onClick={handleCreateDatabase} disabled={!newDatabaseTitle || loading}>
-                      Create
-                    </Button>
-                  </div>
-                )}
-              </div>
-
               {/* Modified Root Pages Grid */}
               <div className="space-y-2 w-full">
-                <label className="text-sm font-medium">Root Pages</label>
+                <label className="text-sm font-medium">Pages</label>
                 <div className="flex flex-col gap-2 w-full">
                   {pages.map((page) => (
                     <Button
                       key={page.id}
                       variant={selectedPage === page.id ? 'default' : 'outline'}
-                      className="w-full justify-start text-left h-auto py-2 px-3 truncate"
+                      className="w-full justify-start text-left h-auto py-2 px-3 truncate max-w-full"
                       onClick={() => setSelectedPage(page.id)}
                     >
                       {page.title}

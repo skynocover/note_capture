@@ -20,7 +20,13 @@ class NotionService {
   }
 
   // 獲取資料庫列表
-  async fetchPages(query: string): Promise<NotionPage[]> {
+  async fetchPages({
+    query,
+    page_size = 10,
+  }: {
+    query: string;
+    page_size?: number;
+  }): Promise<NotionPage[]> {
     const { results } = await this.client.search({
       query,
       filter: { property: 'object', value: 'page' },
@@ -28,7 +34,7 @@ class NotionService {
         direction: 'descending',
         timestamp: 'last_edited_time',
       },
-      page_size: 10,
+      page_size,
     });
 
     // console.table(results);
