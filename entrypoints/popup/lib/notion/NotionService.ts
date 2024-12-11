@@ -1,5 +1,5 @@
 import { Client } from '@notionhq/client';
-import { NotionWorkspace, NotionPage } from './notion.d';
+import { NotionPageContent, NotionWorkspace, NotionPage } from './notion.d';
 
 class NotionService {
   private client: Client;
@@ -53,6 +53,16 @@ class NotionService {
         last_edited_time,
       };
     });
+  }
+
+  async fetchPageContent(pageId: string): Promise<NotionPageContent> {
+    const { results } = await this.client.blocks.children.list({ block_id: pageId });
+    // const page = await this.client.pages.retrieve({ page_id: pageId });
+    const page = await this.client.blocks.retrieve({ block_id: pageId });
+    // @ts-ignore
+    const title = page.child_page.title;
+
+    return { title, results };
   }
 }
 

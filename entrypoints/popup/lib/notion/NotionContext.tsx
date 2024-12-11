@@ -1,6 +1,6 @@
 import React, { createContext, useState, ReactNode, useContext, useEffect } from 'react';
 
-import { NotionWorkspace, NotionPage } from './notion.d';
+import { NotionWorkspace, NotionPage, NotionPageContent } from './notion.d';
 import NotionService from './NotionService';
 
 interface NotionKey {
@@ -24,6 +24,7 @@ interface NotionContextProps {
   setPages: (pages: NotionPage[]) => void;
   connectNotion: () => Promise<void>;
   loadPages: ({ query, page_size }: { query: string; page_size?: number }) => Promise<void>;
+  getPageContent: (pageId: string) => Promise<NotionPageContent>;
 
   // notion keys 管理
   notionKeys: NotionKey[];
@@ -95,6 +96,14 @@ export const NotionProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     setPages(pagesData);
   };
 
+  const getPageContent = async (pageId: string) => {
+    if (!notionService) {
+      throw new Error('Notion client not initialized');
+    }
+    const pageContent = await notionService.fetchPageContent(pageId);
+    return pageContent;
+  };
+
   return (
     <NotionContext.Provider
       value={{
@@ -111,7 +120,7 @@ export const NotionProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         setPages,
         connectNotion,
         loadPages,
-
+        getPageContent,
         // notion keys 管理
         notionKeys,
         setNotionKeys,

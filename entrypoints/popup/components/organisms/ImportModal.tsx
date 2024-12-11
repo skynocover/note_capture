@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { RefreshCw, Search } from 'lucide-react';
+import { PartialBlock } from '@blocknote/core';
 
 import { useNotion } from '../../lib/notion/NotionContext';
-import { ImportSettings } from '../../lib/notion/notion.d';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
 import {
   Select,
@@ -15,11 +15,12 @@ import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { useDebounce } from '../../hooks/useDebounce';
 import { NotionPage } from '../../lib/notion/notion.d';
+import { notion2BlockNote } from '../../lib/notion/utils';
 
 interface ImportModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: (settings: ImportSettings) => void;
+  onConfirm: ({ title, blockNotes }: { title: string; blockNotes: PartialBlock[] }) => void;
 }
 
 export const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onConfirm }) => {
@@ -34,9 +35,9 @@ export const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onCon
     pages,
     loadPages,
     notionKeys,
+    getPageContent,
   } = useNotion();
 
-  const [selectedDatabase, setSelectedDatabase] = useState<string>('');
   const [selectedPage, setSelectedPage] = useState<string>('');
   const [recentPages, setRecentPages] = useState<NotionPage[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -63,33 +64,27 @@ export const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onCon
     }
   }, [debouncedQuery, selectedKeyId]);
 
-  // 當選擇資料庫時
-  const handleDatabaseSelect = async (databaseId: string) => {
-    try {
-      setLoading(true);
-      setError('');
-      setSelectedDatabase(databaseId);
-      await loadPages({ query: debouncedQuery, page_size: 6 });
-    } catch (err) {
-      setError('Failed to load pages');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   // 確認選擇
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
     if (!selectedPage) {
       setError('Please select a page');
       return;
     }
 
-    const settings: ImportSettings = {
-      databaseId: selectedDatabase,
-      selectedNotes: [selectedPage],
-    };
-    onConfirm(settings);
-    onClose();
+    setLoading(true);
+    try {
+      const pageContent = await getPageContent(selectedPage);
+      console.log('🚀 ~ file: ImportModal.tsx:74 ~ handleConfirm ~ pageContent:', pageContent);
+      const blocks = notion2BlockNote(pageContent.results);
+      console.log('🚀 ~ file: ImportModal.tsx:74 ~ handleConfirm ~ blocks:', blocks);
+      onConfirm({ title: pageContent.title, blockNotes: blocks });
+      onClose();
+    } catch (error) {
+      console.error(error);
+      setError('Failed to fetch page content');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleKeySelect = async (keyId: string) => {

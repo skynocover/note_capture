@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Menu, MoreHorizontal, Share2, ArrowUpRight, Trash2, Table, Camera } from 'lucide-react';
+import { PartialBlock } from '@blocknote/core';
 
 import { Button } from '../ui/button';
 import { Card, CardContent } from '../ui/card';
@@ -8,7 +9,6 @@ import { ArticleCard } from '../molecules/ArticleCard';
 import { useApp } from '../../AppContext';
 import { NotionKeysManager } from '../organisms/NotionKeyManager';
 import { ImportModal } from '../organisms/ImportModal';
-import { ImportSettings } from '../../lib/notion/notion';
 
 export default function MainPage() {
   const [isKeyModalOpen, setIsKeyModalOpen] = useState(false);
@@ -121,8 +121,19 @@ export default function MainPage() {
     }
   }, []);
 
-  const handleImportConfirm = (settings: ImportSettings) => {
-    console.log({ settings });
+  const handleImportConfirm = ({
+    title,
+    blockNotes,
+  }: {
+    title: string;
+    blockNotes: PartialBlock[];
+  }) => {
+    const newArticle: IArticleCard = {
+      id: `article-${Date.now()}`,
+      title,
+      content: JSON.stringify(blockNotes),
+    };
+    setArticles((prevArticles) => [...prevArticles, newArticle]);
   };
 
   return (

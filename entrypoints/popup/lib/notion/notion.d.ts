@@ -17,7 +17,7 @@ export interface NotionPage {
   last_edited_time: string;
 }
 
-export interface ImportSettings {
-  databaseId: string;
-  selectedNotes: string[];
+export interface NotionPageContent {
+  title: string;
+  results: PartialBlockObjectResponse[];
 }
