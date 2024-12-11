@@ -1,44 +1,83 @@
-// src/context/NotionContext.tsx
-
 import React, { createContext, useState, ReactNode, useContext, useEffect } from 'react';
-import { NotionWorkspace, NotionDatabase, NotionPage, ImportSettings } from './notion.d';
+
+import { NotionWorkspace, NotionPage } from './notion.d';
 import NotionService from './NotionService';
 
+interface NotionKey {
+  id: string;
+  name: string;
+  key: string;
+}
+
 interface NotionContextProps {
+  // loading and error
+  loading: boolean;
+  setLoading: (loading: boolean) => void;
+  error: string;
+  setError: (error: string) => void;
+
   selectedKeyId: string | null;
   setSelectedKeyId: (id: string | null) => void;
   workspace: NotionWorkspace | null;
   setWorkspace: (workspace: NotionWorkspace) => void;
-  databases: NotionDatabase[];
-  setDatabases: (databases: NotionDatabase[]) => void;
   pages: NotionPage[];
   setPages: (pages: NotionPage[]) => void;
   connectNotion: () => Promise<void>;
-  loadDatabases: () => Promise<void>;
-  loadPages: (databaseId: string) => Promise<void>;
+  loadPages: (query: string) => Promise<void>;
+
+  // notion keys 管理
+  notionKeys: NotionKey[];
+  setNotionKeys: (keys: NotionKey[]) => void;
+  saveNotionKeys: (keys: NotionKey[]) => Promise<void>;
 }
 
 const NotionContext = createContext<NotionContextProps | undefined>(undefined);
 
 export const NotionProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string>('');
+
   const [selectedKeyId, setSelectedKeyId] = useState<string | null>(null);
   const [notionService, setNotionService] = useState<NotionService | null>(null);
   const [workspace, setWorkspace] = useState<NotionWorkspace | null>(null);
-  const [databases, setDatabases] = useState<NotionDatabase[]>([]);
   const [pages, setPages] = useState<NotionPage[]>([]);
+
+  // notion keys 管理
+  const [notionKeys, setNotionKeys] = useState<NotionKey[]>([]);
+
+  const loadKeys = async () => {
+    const result = await browser.storage.local.get('notionKeys');
+    if (result.notionKeys) {
+      setNotionKeys(JSON.parse(result.notionKeys));
+    }
+  };
+
+  const saveNotionKeys = async (keys: NotionKey[]) => {
+    await browser.storage.local.set({
+      notionKeys: JSON.stringify(keys),
+    });
+    setNotionKeys(keys);
+  };
+
+  useEffect(() => {
+    loadKeys();
+  }, []);
 
   useEffect(() => {
     if (selectedKeyId) {
-      // 從 storage 中獲取選定的 key
-      browser.storage.local.get('notionKeys').then((result) => {
-        const keys = JSON.parse(result.notionKeys || '[]');
-        const selectedKey = keys.find((k: any) => k.id === selectedKeyId);
-        if (selectedKey) {
-          setNotionService(new NotionService(selectedKey.key));
-        }
-      });
+      const selectedKey = notionKeys.find((k: any) => k.id === selectedKeyId);
+      if (selectedKey) {
+        setNotionService(new NotionService(selectedKey.key));
+      }
     }
   }, [selectedKeyId]);
+
+  useEffect(() => {
+    if (notionService) {
+      connectNotion();
+      loadPages('');
+    }
+  }, [notionService]);
 
   const connectNotion = async () => {
     if (!notionService) {
@@ -48,36 +87,35 @@ export const NotionProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     setWorkspace(workspaceData);
   };
 
-  const loadDatabases = async () => {
-    if (!notionService || !workspace) {
-      throw new Error('Notion client not initialized or workspace not selected');
-    }
-    const dbs = await notionService.fetchDatabases();
-    setDatabases(dbs);
-  };
-
-  const loadPages = async (databaseId: string) => {
+  const loadPages = async (query: string) => {
     if (!notionService) {
       throw new Error('Notion client not initialized');
     }
-    const pagesData = await notionService.fetchPages(databaseId);
+    const pagesData = await notionService.fetchPages(query);
     setPages(pagesData);
   };
 
   return (
     <NotionContext.Provider
       value={{
+        loading,
+        setLoading,
+        error,
+        setError,
+
         selectedKeyId,
         setSelectedKeyId,
         workspace,
         setWorkspace,
-        databases,
-        setDatabases,
         pages,
         setPages,
         connectNotion,
-        loadDatabases,
         loadPages,
+
+        // notion keys 管理
+        notionKeys,
+        setNotionKeys,
+        saveNotionKeys,
       }}
     >
       {children}

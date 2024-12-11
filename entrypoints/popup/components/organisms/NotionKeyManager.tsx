@@ -1,8 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Trash2, Plus } from 'lucide-react';
+
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
+import { useNotion } from '../../lib/notion/NotionContext';
 
 interface NotionKey {
   id: string;
@@ -16,28 +18,9 @@ interface NotionKeysManagerProps {
 }
 
 export function NotionKeysManager({ isOpen, onOpenChange }: NotionKeysManagerProps) {
-  const [notionKeys, setNotionKeys] = useState<NotionKey[]>([]);
+  const { notionKeys, saveNotionKeys } = useNotion();
   const [newKeyName, setNewKeyName] = useState('');
   const [newKeyValue, setNewKeyValue] = useState('');
-
-  // Load notion keys on mount
-  useEffect(() => {
-    const loadKeys = async () => {
-      const result = await browser.storage.local.get('notionKeys');
-      if (result.notionKeys) {
-        setNotionKeys(JSON.parse(result.notionKeys));
-      }
-    };
-    loadKeys();
-  }, []);
-
-  // Save notion keys whenever they change
-  const saveNotionKeys = async (keys: NotionKey[]) => {
-    await browser.storage.local.set({
-      notionKeys: JSON.stringify(keys),
-    });
-    setNotionKeys(keys);
-  };
 
   const handleAddKey = () => {
     if (!newKeyName || !newKeyValue) return;
