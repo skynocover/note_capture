@@ -29,7 +29,6 @@ class NotionService {
   }): Promise<NotionPage[]> {
     const { results } = await this.client.search({
       query,
-      filter: { property: 'object', value: 'page' },
       sort: {
         direction: 'descending',
         timestamp: 'last_edited_time',
@@ -41,11 +40,12 @@ class NotionService {
 
     return results.map((db) => {
       // @ts-ignore
-      const { id, created_time, last_edited_time, properties } = db;
+      const { id, created_time, last_edited_time, properties, title } = db;
 
       return {
         id,
         title:
+          title?.[0]?.plain_text ||
           properties.title?.title?.[0]?.plain_text ||
           properties.Name?.title?.[0]?.plain_text ||
           'Untitled',
@@ -57,10 +57,9 @@ class NotionService {
 
   async fetchPageContent(pageId: string): Promise<NotionPageContent> {
     const { results } = await this.client.blocks.children.list({ block_id: pageId });
-    // const page = await this.client.pages.retrieve({ page_id: pageId });
     const page = await this.client.blocks.retrieve({ block_id: pageId });
     // @ts-ignore
-    const title = page.child_page.title;
+    const title = page.child_page ? page.child_page.title : page.child_database.title;
 
     return { title, results };
   }

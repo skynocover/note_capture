@@ -51,10 +51,10 @@ export function ArticleCard({
     }
   };
 
-  //   console.log({ content });
+  console.log({ content });
 
   const editor = useCreateBlockNote({
-    initialContent: JSON.parse(content),
+    initialContent: content && content !== '[]' ? JSON.parse(content) : undefined,
   });
 
   // 監聽編輯器內容變化
