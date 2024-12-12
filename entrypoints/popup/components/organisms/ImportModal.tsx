@@ -15,7 +15,7 @@ import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { useDebounce } from '../../hooks/useDebounce';
 import { NotionPage } from '../../lib/notion/notion.d';
-import { notion2BlockNote } from '../../lib/notion/utils';
+import { notionToBlockNote } from '../../lib/notion/utils';
 
 interface ImportModalProps {
   isOpen: boolean;
@@ -74,8 +74,8 @@ export const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onCon
     setLoading(true);
     try {
       const pageContent = await getPageContent(selectedPage);
-      console.log('🚀 ~ file: ImportModal.tsx:74 ~ handleConfirm ~ pageContent:', pageContent);
-      const blocks = notion2BlockNote(pageContent.results);
+      console.log(JSON.stringify(pageContent));
+      const blocks = notionToBlockNote(pageContent.results);
       console.log('🚀 ~ file: ImportModal.tsx:74 ~ handleConfirm ~ blocks:', blocks);
       onConfirm({ title: pageContent.title, blockNotes: blocks });
       onClose();
