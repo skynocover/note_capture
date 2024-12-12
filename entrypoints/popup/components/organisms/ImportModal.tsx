@@ -75,12 +75,26 @@ export const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onCon
     setLoading(true);
     try {
       const pageContent = await getPageContent(selectedPage);
-      console.log(JSON.stringify(pageContent));
       const blocks = await notionToBlockNote({
         notionBlocks: pageContent.results,
         notionService,
       });
-      //   console.log('🚀 ~ file: ImportModal.tsx:74 ~ handleConfirm ~ blocks:', blocks);
+
+      // Save to recent pages
+      const selectedPageData =
+        pages.find((p) => p.id === selectedPage) || recentPages.find((p) => p.id === selectedPage);
+      if (selectedPageData) {
+        const updatedRecentPages = [
+          selectedPageData,
+          ...recentPages.filter((p) => p.id !== selectedPage),
+        ].slice(0, 3); // Keep only the 3 most recent pages
+
+        setRecentPages(updatedRecentPages);
+        await browser.storage.local.set({
+          recentPages: JSON.stringify(updatedRecentPages),
+        });
+      }
+
       onConfirm({ title: pageContent.title, blockNotes: blocks });
       onClose();
     } catch (error) {
