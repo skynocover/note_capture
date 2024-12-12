@@ -26,6 +26,9 @@ interface NotionContextProps {
   loadPages: ({ query, page_size }: { query: string; page_size?: number }) => Promise<void>;
   getPageContent: (pageId: string) => Promise<NotionPageContent>;
 
+  // notion service
+  notionService: NotionService | null;
+
   // notion keys 管理
   notionKeys: NotionKey[];
   setNotionKeys: (keys: NotionKey[]) => void;
@@ -121,6 +124,7 @@ export const NotionProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         connectNotion,
         loadPages,
         getPageContent,
+        notionService,
         // notion keys 管理
         notionKeys,
         setNotionKeys,

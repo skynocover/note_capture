@@ -59,7 +59,7 @@ class NotionService {
     const { results } = await this.client.blocks.children.list({ block_id: pageId });
     const page = await this.client.blocks.retrieve({ block_id: pageId });
     // @ts-ignore
-    const title = page.child_page ? page.child_page.title : page.child_database.title;
+    const title = page.child_page ? page.child_page.title : page.child_database?.title;
 
     return { title, results };
   }

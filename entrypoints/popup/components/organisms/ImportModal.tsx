@@ -36,6 +36,7 @@ export const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onCon
     loadPages,
     notionKeys,
     getPageContent,
+    notionService,
   } = useNotion();
 
   const [selectedPage, setSelectedPage] = useState<string>('');
@@ -75,8 +76,11 @@ export const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onCon
     try {
       const pageContent = await getPageContent(selectedPage);
       console.log(JSON.stringify(pageContent));
-      const blocks = notionToBlockNote(pageContent.results);
-      console.log('🚀 ~ file: ImportModal.tsx:74 ~ handleConfirm ~ blocks:', blocks);
+      const blocks = await notionToBlockNote({
+        notionBlocks: pageContent.results,
+        notionService,
+      });
+      //   console.log('🚀 ~ file: ImportModal.tsx:74 ~ handleConfirm ~ blocks:', blocks);
       onConfirm({ title: pageContent.title, blockNotes: blocks });
       onClose();
     } catch (error) {
