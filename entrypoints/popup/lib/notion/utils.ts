@@ -21,19 +21,25 @@ export const notionToBlockNote = async ({
       const type = mapBlockType(block.type);
       const props = extractProps(block);
 
+      let tableContent: any;
       if (block.type === 'table') {
         if (!notionService) {
           throw new Error('NotionService is not initialized');
         }
         const table = await notionService.fetchPageContent(block.id);
-        return convertNotionTableToNoteBlock({ table, block });
+        tableContent = convertNotionTableToNoteBlock({ table, block });
       }
 
       const noteBlock: PartialBlock = {
         id: block.id,
         type,
         props,
-        content: block.type === 'quote' ? [] : extractContent(block),
+        content:
+          block.type === 'table'
+            ? tableContent
+            : block.type === 'quote'
+            ? []
+            : extractContent(block),
         children: block.type === 'quote' ? extractContent(block) : [],
       };
       return noteBlock;
@@ -53,7 +59,7 @@ const mapBlockType = (notionType: string): any => {
     to_do: 'checkListItem',
     embed: 'image',
     code: 'codeBlock',
-    // table: 'table',
+    table: 'table',
   };
   return typeMap[notionType] || 'paragraph';
 };
@@ -146,25 +152,16 @@ const convertNotionTableToNoteBlock = ({
 }: {
   table: { results: NotionRow[] };
   block: NotionBlock;
-}): PartialBlock => {
-  const noteBlock: PartialBlock = {
-    id: block.id,
-    type: 'table',
-    props: { textColor: 'default' },
-    // @ts-ignore
-    content: {
-      type: 'tableContent',
-      columnWidths: Array(block.table.table_width).fill(null),
-      rows: table.results.map((row) => ({
-        cells: row.table_row.cells.map((cell) =>
-          cell.map((content) => convertNotionRichTextToNoteBlock(block, content)),
-        ),
-      })),
-    },
-    children: [],
+}): any => {
+  return {
+    type: 'tableContent',
+    columnWidths: Array(block.table.table_width).fill(null),
+    rows: table.results.map((row) => ({
+      cells: row.table_row.cells.map((cell) =>
+        cell.map((content) => convertNotionRichTextToNoteBlock(block, content)),
+      ),
+    })),
   };
-
-  return noteBlock;
 };
 
 const convertNotionRichTextToNoteBlock = (block: NotionBlock, content: any) => {
