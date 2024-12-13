@@ -4,8 +4,7 @@ import { PartialBlock } from '@blocknote/core';
 
 import { Button } from '../ui/button';
 import { Card, CardContent } from '../ui/card';
-import { IArticleCard } from '../molecules/ArticleCard';
-import { ArticleCard } from '../molecules/ArticleCard';
+import { ArticleCard, IArticleCard, IExportContent } from '../molecules/ArticleCard';
 import { useApp } from '../../AppContext';
 import { NotionKeysManager } from '../organisms/NotionKeyManager';
 import { ImportModal } from '../organisms/ImportModal';
@@ -14,6 +13,10 @@ export default function MainPage() {
   const [isKeyModalOpen, setIsKeyModalOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [exportContent, setExportContent] = useState<IExportContent>({
+    title: '',
+    content: '',
+  });
   const { articles, setArticles } = useApp();
 
   // 監聽抓取table的回應
@@ -163,6 +166,7 @@ export default function MainPage() {
             onDelete={() => onDelete(article.id)}
             onTitleEdit={onTitleEdit}
             setIsExportModalOpen={setIsExportModalOpen}
+            setExportContent={setExportContent}
           />
         ))}
 
@@ -217,6 +221,7 @@ export default function MainPage() {
         <ImportModal
           isImportOpen={isImportModalOpen}
           isExportOpen={isExportModalOpen}
+          exportContent={exportContent}
           onImport={handleImportConfirm}
           onClose={() => {
             setIsImportModalOpen(false);

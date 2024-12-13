@@ -18,7 +18,10 @@ import {
   AlertDialogTrigger,
 } from '../ui/alert-dialog';
 
-import { ImportModal } from '../organisms/ImportModal';
+export interface IExportContent {
+  title: string;
+  content: string;
+}
 
 export interface IArticleCard {
   id: string;
@@ -32,6 +35,7 @@ export interface IArticleCardProps extends IArticleCard {
   onDelete: () => void;
   onTitleEdit: (id: string, newTitle: string) => void;
   setIsExportModalOpen: React.Dispatch<React.SetStateAction<boolean>>;
+  setExportContent: React.Dispatch<React.SetStateAction<IExportContent>>;
 }
 
 export function ArticleCard({
@@ -43,6 +47,7 @@ export function ArticleCard({
   onDelete,
   onTitleEdit,
   setIsExportModalOpen,
+  setExportContent,
 }: IArticleCardProps) {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editedTitle, setEditedTitle] = useState(title);
@@ -106,7 +111,16 @@ export function ArticleCard({
             )}
           </div>
           <div className="flex items-center gap-4">
-            <Share className="w-5 h-5 cursor-pointer" onClick={() => setIsExportModalOpen(true)} />
+            <Share
+              className="w-5 h-5 cursor-pointer"
+              onClick={() => {
+                setIsExportModalOpen(true);
+                setExportContent({
+                  title: title,
+                  content: JSON.stringify(editor.document),
+                });
+              }}
+            />
 
             <AlertDialog>
               <AlertDialogTrigger>

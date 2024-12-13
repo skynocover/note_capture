@@ -15,13 +15,15 @@ import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { useDebounce } from '../../hooks/useDebounce';
 import { NotionPage } from '../../lib/notion/notion.d';
-import { notionToBlockNote } from '../../lib/notion/utils';
+import { notionToBlockNote, blockNoteToNotion } from '../../lib/notion/utils';
+import { IExportContent } from '../molecules/ArticleCard';
 
 interface ImportModalProps {
   isImportOpen: boolean;
   isExportOpen: boolean;
   onClose: () => void;
   onImport: ({ title, blockNotes }: { title: string; blockNotes: PartialBlock[] }) => void;
+  exportContent: IExportContent;
 }
 
 export const ImportModal: React.FC<ImportModalProps> = ({
@@ -29,6 +31,7 @@ export const ImportModal: React.FC<ImportModalProps> = ({
   isExportOpen,
   onClose,
   onImport,
+  exportContent,
 }) => {
   const mode = isImportOpen ? 'import' : 'export';
   const isOpen = isImportOpen || isExportOpen;
@@ -109,6 +112,11 @@ export const ImportModal: React.FC<ImportModalProps> = ({
         onImport({ title: pageContent.title, blockNotes: blocks });
         onClose();
       } else {
+        await notionService?.createPage({
+          parentPageId: selectedPage,
+          title: exportContent.title,
+          content: blockNoteToNotion(JSON.parse(exportContent.content)),
+        });
         onClose();
       }
     } catch (error) {

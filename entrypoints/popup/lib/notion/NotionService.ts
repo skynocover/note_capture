@@ -1,5 +1,8 @@
 import { Client } from '@notionhq/client';
+import { BlockObjectRequest } from '@notionhq/client/build/src/api-endpoints';
+
 import { NotionPageContent, NotionWorkspace, NotionPage } from './notion.d';
+import { INotionBlock } from './utils';
 
 class NotionService {
   private client: Client;
@@ -64,7 +67,21 @@ class NotionService {
     return { title, results };
   }
 
-  async createPage({ parentId, page }: { parentId: string; page: NotionPageContent }) {}
+  async createPage({
+    parentPageId,
+    title,
+    content,
+  }: {
+    parentPageId: string;
+    title: string;
+    content: BlockObjectRequest[];
+  }): Promise<void> {
+    await this.client.pages.create({
+      parent: { type: 'page_id', page_id: parentPageId },
+      properties: { title: { type: 'title', title: [{ type: 'text', text: { content: title } }] } },
+      children: content,
+    });
+  }
 }
 
 export default NotionService;

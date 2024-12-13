@@ -1,12 +1,13 @@
 import { PartialBlock } from '@blocknote/core';
+import { BlockObjectRequest } from '@notionhq/client/build/src/api-endpoints';
 import NotionService from './NotionService';
 
 // 明確的類型定義
-interface NotionBlock {
+export interface INotionBlock {
   id: string;
   type: string;
   props: Record<string, any>;
-  children: NotionBlock[];
+  children: INotionBlock[];
   table?: {
     table_width: number;
   };
@@ -44,12 +45,21 @@ const BLOCK_TYPE_MAP: Record<string, PartialBlock['type']> = {
   table: 'table',
 } as const;
 
+// 新增一個反向的類型映射
+const REVERSE_BLOCK_TYPE_MAP: Record<string, string> = Object.entries(BLOCK_TYPE_MAP).reduce(
+  (acc, [notionType, blockNoteType]) => ({
+    ...acc,
+    [blockNoteType as string]: notionType,
+  }),
+  {},
+);
+
 // 主要轉換函數
 export const notionToBlockNote = async ({
   notionBlocks,
   notionService,
 }: {
-  notionBlocks: NotionBlock[];
+  notionBlocks: INotionBlock[];
   notionService: NotionService | null;
 }): Promise<PartialBlock[]> => {
   try {
@@ -76,7 +86,7 @@ export const notionToBlockNote = async ({
 };
 
 // 提取屬性
-const extractProps = (block: NotionBlock): Record<string, any> => {
+const extractProps = (block: INotionBlock): Record<string, any> => {
   const baseProps = {
     textColor: block[block.type]?.color || 'default',
     backgroundColor: 'default',
@@ -98,7 +108,7 @@ const extractProps = (block: NotionBlock): Record<string, any> => {
 
 // 獲取區塊內容
 const getBlockContent = async (
-  block: NotionBlock,
+  block: INotionBlock,
   notionService: NotionService | null,
 ): Promise<any> => {
   // table要另外處理
@@ -145,7 +155,7 @@ const extractStyles = (annotations: Record<string, boolean>) => ({
 // 轉換表格
 const convertNotionTableToNoteBlock = (
   table: { results: NotionTableRow[] },
-  block: NotionBlock,
+  block: INotionBlock,
 ) => ({
   type: 'tableContent',
   columnWidths: Array(block.table?.table_width || 0).fill(null),
@@ -157,7 +167,7 @@ const convertNotionTableToNoteBlock = (
 });
 
 // 轉換富文本
-const convertNotionRichTextToNoteBlock = (block: NotionBlock, content: NotionRichText) => ({
+const convertNotionRichTextToNoteBlock = (block: INotionBlock, content: NotionRichText) => ({
   type: content.href ? 'link' : content.type,
   text: content.text.content || '',
   styles: block.type === 'code' ? {} : extractStyles(content.annotations || {}),
@@ -172,3 +182,78 @@ const convertNotionRichTextToNoteBlock = (block: NotionBlock, content: NotionRic
       ]
     : undefined,
 });
+
+export const blockNoteToNotion = (blocks: PartialBlock[]): BlockObjectRequest[] => {
+  return blocks.map((block) => {
+    const notionType = REVERSE_BLOCK_TYPE_MAP[block.type || 'paragraph'] || 'paragraph';
+
+    if (block.type === 'image') {
+      return {
+        object: 'block',
+        type: 'embed',
+        embed: {
+          url: block.props?.url || '',
+        },
+      } as BlockObjectRequest;
+    }
+
+    if (block.type === 'codeBlock') {
+      return {
+        object: 'block',
+        type: 'code',
+        code: {
+          rich_text: [
+            {
+              type: 'text',
+              text: {
+                content: block.content?.[0]?.text || '',
+                link: null,
+              },
+            },
+          ],
+          language: block.props?.language || 'plaintext',
+        },
+      } as BlockObjectRequest;
+    }
+
+    if (block.type === 'table') {
+      return {
+        object: 'block',
+        type: 'table',
+        table: {
+          table_width: block.content?.columnWidths?.length || 1,
+          has_column_header: false,
+          has_row_header: false,
+          children:
+            block.content?.rows?.map((row) => ({
+              type: 'table_row',
+              table_row: {
+                cells: row.cells.map((cell) =>
+                  cell.map((content) => ({
+                    type: 'text',
+                    text: { content: content.text || '', link: null },
+                  })),
+                ),
+              },
+            })) || [],
+        },
+      } as BlockObjectRequest;
+    }
+
+    return {
+      object: 'block',
+      type: notionType,
+      [notionType]: {
+        rich_text: [
+          {
+            type: 'text',
+            text: {
+              content: block.content?.[0]?.text || '',
+              link: null,
+            },
+          },
+        ],
+      },
+    } as BlockObjectRequest;
+  });
+};
