@@ -56,13 +56,14 @@ export const ImportModal: React.FC<ImportModalProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const debouncedQuery = useDebounce(searchQuery, 300);
 
-  // 載入最近使用的資料庫
+  // 修改 recentPages 的狀態管理，根據模式分別存取
   useEffect(() => {
-    browser.storage.local.get('recentPages').then((result) => {
-      const saved = JSON.parse(result.recentPages || '[]');
+    const storageKey = mode === 'import' ? 'recentImportPages' : 'recentExportPages';
+    browser.storage.local.get(storageKey).then((result) => {
+      const saved = JSON.parse(result[storageKey] || '[]');
       setRecentPages(saved);
     });
-  }, []);
+  }, [mode]);
 
   useEffect(() => {
     if (selectedKeyId) {
@@ -86,39 +87,37 @@ export const ImportModal: React.FC<ImportModalProps> = ({
 
     setLoading(true);
     try {
+      const selectedPageData =
+        pages.find((p) => p.id === selectedPage) || recentPages.find((p) => p.id === selectedPage);
+
+      if (selectedPageData) {
+        const storageKey = mode === 'import' ? 'recentImportPages' : 'recentExportPages';
+        const updatedRecentPages = [
+          selectedPageData,
+          ...recentPages.filter((p) => p.id !== selectedPage),
+        ].slice(0, 3);
+
+        setRecentPages(updatedRecentPages);
+        await browser.storage.local.set({
+          [storageKey]: JSON.stringify(updatedRecentPages),
+        });
+      }
+
       if (mode === 'import') {
         const pageContent = await getPageContent(selectedPage);
         const blocks = await notionToBlockNote({
           notionBlocks: pageContent.results,
           notionService,
         });
-
-        // Save to recent pages
-        const selectedPageData =
-          pages.find((p) => p.id === selectedPage) ||
-          recentPages.find((p) => p.id === selectedPage);
-        if (selectedPageData) {
-          const updatedRecentPages = [
-            selectedPageData,
-            ...recentPages.filter((p) => p.id !== selectedPage),
-          ].slice(0, 3); // Keep only the 3 most recent pages
-
-          setRecentPages(updatedRecentPages);
-          await browser.storage.local.set({
-            recentPages: JSON.stringify(updatedRecentPages),
-          });
-        }
-
         onImport({ title: pageContent.title, blockNotes: blocks });
-        onClose();
       } else {
         await notionService?.createPage({
           parentPageId: selectedPage,
           title: exportContent.title,
           content: blockNoteToNotion(JSON.parse(exportContent.content)),
         });
-        onClose();
       }
+      onClose();
     } catch (error) {
       console.error(error);
       setError('Failed to fetch page content');
