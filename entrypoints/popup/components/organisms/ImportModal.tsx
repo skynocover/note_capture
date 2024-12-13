@@ -18,12 +18,21 @@ import { NotionPage } from '../../lib/notion/notion.d';
 import { notionToBlockNote } from '../../lib/notion/utils';
 
 interface ImportModalProps {
-  isOpen: boolean;
+  isImportOpen: boolean;
+  isExportOpen: boolean;
   onClose: () => void;
-  onConfirm: ({ title, blockNotes }: { title: string; blockNotes: PartialBlock[] }) => void;
+  onImport: ({ title, blockNotes }: { title: string; blockNotes: PartialBlock[] }) => void;
 }
 
-export const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onConfirm }) => {
+export const ImportModal: React.FC<ImportModalProps> = ({
+  isImportOpen,
+  isExportOpen,
+  onClose,
+  onImport,
+}) => {
+  const mode = isImportOpen ? 'import' : 'export';
+  const isOpen = isImportOpen || isExportOpen;
+
   const {
     loading,
     setLoading,
@@ -74,29 +83,34 @@ export const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onCon
 
     setLoading(true);
     try {
-      const pageContent = await getPageContent(selectedPage);
-      const blocks = await notionToBlockNote({
-        notionBlocks: pageContent.results,
-        notionService,
-      });
-
-      // Save to recent pages
-      const selectedPageData =
-        pages.find((p) => p.id === selectedPage) || recentPages.find((p) => p.id === selectedPage);
-      if (selectedPageData) {
-        const updatedRecentPages = [
-          selectedPageData,
-          ...recentPages.filter((p) => p.id !== selectedPage),
-        ].slice(0, 3); // Keep only the 3 most recent pages
-
-        setRecentPages(updatedRecentPages);
-        await browser.storage.local.set({
-          recentPages: JSON.stringify(updatedRecentPages),
+      if (mode === 'import') {
+        const pageContent = await getPageContent(selectedPage);
+        const blocks = await notionToBlockNote({
+          notionBlocks: pageContent.results,
+          notionService,
         });
-      }
 
-      onConfirm({ title: pageContent.title, blockNotes: blocks });
-      onClose();
+        // Save to recent pages
+        const selectedPageData =
+          pages.find((p) => p.id === selectedPage) ||
+          recentPages.find((p) => p.id === selectedPage);
+        if (selectedPageData) {
+          const updatedRecentPages = [
+            selectedPageData,
+            ...recentPages.filter((p) => p.id !== selectedPage),
+          ].slice(0, 3); // Keep only the 3 most recent pages
+
+          setRecentPages(updatedRecentPages);
+          await browser.storage.local.set({
+            recentPages: JSON.stringify(updatedRecentPages),
+          });
+        }
+
+        onImport({ title: pageContent.title, blockNotes: blocks });
+        onClose();
+      } else {
+        onClose();
+      }
     } catch (error) {
       console.error(error);
       setError('Failed to fetch page content');
@@ -120,7 +134,7 @@ export const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onCon
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-h-[80vh] overflow-hidden flex flex-col">
         <DialogHeader>
-          <DialogTitle>Import from Notion</DialogTitle>
+          <DialogTitle>{mode === 'import' ? 'Import from Notion' : 'Export to Notion'}</DialogTitle>
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto pr-2">
@@ -218,7 +232,7 @@ export const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onCon
             Cancel
           </Button>
           <Button onClick={handleConfirm} disabled={loading || !selectedPage}>
-            {loading ? 'Loading...' : 'Import'}
+            {loading ? 'Loading...' : mode === 'import' ? 'Import' : 'Export'}
           </Button>
         </div>
       </DialogContent>

@@ -13,6 +13,7 @@ import { ImportModal } from '../organisms/ImportModal';
 export default function MainPage() {
   const [isKeyModalOpen, setIsKeyModalOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const { articles, setArticles } = useApp();
 
   // 監聽抓取table的回應
@@ -161,6 +162,7 @@ export default function MainPage() {
             onEdit={onEdit}
             onDelete={() => onDelete(article.id)}
             onTitleEdit={onTitleEdit}
+            setIsExportModalOpen={setIsExportModalOpen}
           />
         ))}
 
@@ -213,9 +215,13 @@ export default function MainPage() {
         </div>
         <NotionKeysManager isOpen={isKeyModalOpen} onOpenChange={setIsKeyModalOpen} />
         <ImportModal
-          isOpen={isImportModalOpen}
-          onClose={() => setIsImportModalOpen(false)}
-          onConfirm={handleImportConfirm}
+          isImportOpen={isImportModalOpen}
+          isExportOpen={isExportModalOpen}
+          onImport={handleImportConfirm}
+          onClose={() => {
+            setIsImportModalOpen(false);
+            setIsExportModalOpen(false);
+          }}
         />
       </main>
     </div>

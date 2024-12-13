@@ -63,6 +63,8 @@ class NotionService {
 
     return { title, results };
   }
+
+  async createPage({ parentId, page }: { parentId: string; page: NotionPageContent }) {}
 }
 
 export default NotionService;

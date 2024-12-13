@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 
-import { Edit2, Globe, Trash2 } from 'lucide-react';
+import { Globe, Trash2, Share } from 'lucide-react';
 import { BlockNoteView } from '@blocknote/mantine';
 import { useCreateBlockNote } from '@blocknote/react';
+import { PartialBlock } from '@blocknote/core';
 
 import { Card, CardContent } from '../ui/card';
 import {
@@ -17,6 +18,8 @@ import {
   AlertDialogTrigger,
 } from '../ui/alert-dialog';
 
+import { ImportModal } from '../organisms/ImportModal';
+
 export interface IArticleCard {
   id: string;
   title: string;
@@ -27,7 +30,8 @@ export interface IArticleCard {
 export interface IArticleCardProps extends IArticleCard {
   onEdit: (id: string, newContent: string) => void;
   onDelete: () => void;
-  onTitleEdit?: (id: string, newTitle: string) => void;
+  onTitleEdit: (id: string, newTitle: string) => void;
+  setIsExportModalOpen: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 export function ArticleCard({
@@ -38,6 +42,7 @@ export function ArticleCard({
   onEdit,
   onDelete,
   onTitleEdit,
+  setIsExportModalOpen,
 }: IArticleCardProps) {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editedTitle, setEditedTitle] = useState(title);
@@ -101,6 +106,8 @@ export function ArticleCard({
             )}
           </div>
           <div className="flex items-center gap-4">
+            <Share className="w-5 h-5 cursor-pointer" onClick={() => setIsExportModalOpen(true)} />
+
             <AlertDialog>
               <AlertDialogTrigger>
                 <Trash2 className="w-5 h-5" />
