@@ -19,7 +19,12 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 export const AppProvider: React.FC<any> = ({ children }) => {
   const [articles, setArticles] = useState<IArticleCard[]>([defaultArticle]);
 
-  useEffect(() => {}, []);
+  const port = browser.runtime.connect({ name: 'sidebar-connection' });
+
+  useEffect(() => {
+    // 進入畫面時 送出事件 不需要disconnect 因為side panel一關掉就自動斷線
+    port.postMessage({ action: 'sidePanelOpened' });
+  }, []);
 
   return <AppContext.Provider value={{ articles, setArticles }}>{children}</AppContext.Provider>;
 };

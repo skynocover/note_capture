@@ -68,18 +68,25 @@ export default defineContentScript({
         });
         return true;
       }
+
+      if (message.action === 'sidePanelOpened') {
+        console.log('sidePanelOpened');
+        return;
+      }
+      if (message.action === 'sidePanelClosed') {
+        console.log('sidePanelClosed');
+        return;
+      }
+
+      if (message.action === 'startScreenshotSelection') {
+        screenshotSelector.show(message.dataUrl);
+      }
     });
 
     // 初始化拖曳功能
     new TextSelectionDragger();
 
     const screenshotSelector = new ScreenshotSelector();
-
-    browser.runtime.onMessage.addListener(async (message) => {
-      if (message.action === 'startScreenshotSelection') {
-        screenshotSelector.show(message.dataUrl);
-      }
-    });
   },
 });
 
@@ -169,11 +176,13 @@ class TextSelectionDragger {
    */
   private initializeEventListeners() {
     // 監聽文字擇事件
-    document.addEventListener('selectionchange', () => {
+    document.addEventListener('selectionchange', async () => {
       const selection = window.getSelection();
       const selectedText = selection?.toString().trim();
 
-      if (!selectedText) {
+      const { sidePanelOpened } = await browser.storage.local.get('sidePanelOpened');
+
+      if (!selectedText || sidePanelOpened !== 'opened') {
         this.hideIcon();
         return;
       }

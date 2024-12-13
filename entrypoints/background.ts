@@ -16,4 +16,16 @@ export default defineBackground(() => {
 
   // 處理截圖區域的訊息
   browser.runtime.onMessage.addListener(async (message, sender) => {});
+
+  browser.runtime.onConnect.addListener((port) => {
+    // 確認side panel是否連結
+    if (port.name === 'sidebar-connection') {
+      port.onMessage.addListener(() => {
+        browser.storage.local.set({ sidePanelOpened: 'opened' });
+      });
+      port.onDisconnect.addListener(() => {
+        browser.storage.local.set({ sidePanelOpened: 'closed' });
+      });
+    }
+  });
 });
