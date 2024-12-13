@@ -126,12 +126,55 @@ class TextSelectionDragger {
         display: none;
         user-select: none;
         -webkit-user-select: none;
+        animation: fadeInScale 0.3s ease-out;
       ">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M14 4h6m-6 8h6m-6 8h6M3 20l5-5m0 5l-5-5"/>
         </svg>
       </div>
     `;
+
+    // 添加動畫關鍵幀 會有淡入跟放大的效果
+    const style = document.createElement('style');
+    style.textContent = `
+      @keyframes fadeInScale {
+        from {
+          opacity: 0;
+          transform: scale(0.8);
+        }
+        to {
+          opacity: 1;
+          transform: scale(1);
+        }
+      }
+      
+      @keyframes float {
+        0% {
+          transform: translateY(0px);
+        }
+        50% {
+          transform: translateY(-5px);
+        }
+        100% {
+          transform: translateY(0px);
+        }
+      }
+      
+      .drag-wrapper {
+        animation: float 2s ease-in-out infinite;
+        background: linear-gradient(135deg, #4f46e5, #3b82f6);
+        color: white;
+        border: 2px solid rgba(255, 255, 255, 0.2);
+      }
+      
+      .drag-wrapper:hover {
+        background: linear-gradient(135deg, #3b82f6, #2563eb);
+        transform: scale(1.1);
+        transition: all 0.2s ease;
+      }
+    `;
+    document.head.appendChild(style);
+
     document.body.appendChild(dragIcon);
     return { dragIcon, iconElement: dragIcon.firstElementChild as HTMLElement };
   }
@@ -175,7 +218,7 @@ class TextSelectionDragger {
    * 3. 拖曳結束事件 (dragend)
    */
   private initializeEventListeners() {
-    // 監聽文字擇事件
+    // 監聽文字選擇事件
     document.addEventListener('selectionchange', async () => {
       const selection = window.getSelection();
       const selectedText = selection?.toString().trim();
@@ -195,6 +238,9 @@ class TextSelectionDragger {
         this.iconElement.style.display = 'block';
         this.iconElement.style.left = `${(rect.left + rect.right) / 2}px`;
         this.iconElement.style.top = `${rect.bottom + 5}px`;
+
+        // 調用新增的功能
+        this.adjustIconColor(); // 自動調整圖示顏色
       }
     });
 
@@ -227,6 +273,45 @@ class TextSelectionDragger {
       e.preventDefault();
       e.stopPropagation();
     });
+  }
+
+  // 根據背景色調整拖曳元件的顏色
+  private adjustIconColor() {
+    const selection = window.getSelection();
+    if (!selection) return;
+
+    const range = selection.getRangeAt(0);
+    const rect = range.getBoundingClientRect();
+
+    // 取得選取區域背景的顏色
+    const element = document.elementFromPoint(rect.left, rect.top);
+    if (!element) return;
+
+    // 遞迴向上尋找真實的背景色
+    const getBgColor = (el: Element): string => {
+      const bgColor = window.getComputedStyle(el).backgroundColor;
+      if (bgColor === 'transparent' || bgColor === 'rgba(0, 0, 0, 0)') {
+        return el.parentElement ? getBgColor(el.parentElement) : 'rgb(255, 255, 255)';
+      }
+      return bgColor;
+    };
+
+    const bgColor = getBgColor(element);
+
+    // 解析 RGB 值
+    const rgb = bgColor.match(/\d+/g);
+    if (rgb) {
+      const brightness =
+        (parseInt(rgb[0]) * 299 + parseInt(rgb[1]) * 587 + parseInt(rgb[2]) * 114) / 1000;
+
+      if (brightness > 128) {
+        this.iconElement.style.background = '#3B82F6'; // 深灰
+        this.iconElement.style.color = 'white';
+      } else {
+        this.iconElement.style.background = 'white';
+        this.iconElement.style.color = '#3b82f6';
+      }
+    }
   }
 }
 
@@ -352,7 +437,7 @@ class ScreenshotSelector {
         return;
       }
 
-      // 如果已有選取範圍且點擊在選取範圍內，進入拖曳模式
+      // 如果已有選取範圍且點擊在選取範圍內，���入拖曳模式
       const rect = this.selector.getBoundingClientRect();
       if (
         e.clientX >= rect.left &&
