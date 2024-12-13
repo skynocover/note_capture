@@ -47,10 +47,15 @@ const BLOCK_TYPE_MAP: Record<string, PartialBlock['type']> = {
 
 // 新增一個反向的類型映射
 const REVERSE_BLOCK_TYPE_MAP: Record<string, string> = Object.entries(BLOCK_TYPE_MAP).reduce(
-  (acc, [notionType, blockNoteType]) => ({
-    ...acc,
-    [blockNoteType as string]: notionType,
-  }),
+  (acc: Record<string, string>, [notionType, blockNoteType]) => {
+    if (acc[blockNoteType as string] && notionType === 'quote') {
+      return acc;
+    }
+    return {
+      ...acc,
+      [blockNoteType as string]: notionType,
+    };
+  },
   {},
 );
 
@@ -186,74 +191,106 @@ const convertNotionRichTextToNoteBlock = (block: INotionBlock, content: NotionRi
 export const blockNoteToNotion = (blocks: PartialBlock[]): BlockObjectRequest[] => {
   return blocks.map((block) => {
     const notionType = REVERSE_BLOCK_TYPE_MAP[block.type || 'paragraph'] || 'paragraph';
+    const baseBlock = { object: 'block' } as BlockObjectRequest;
 
-    if (block.type === 'image') {
-      return {
-        object: 'block',
-        type: 'embed',
-        embed: {
-          url: block.props?.url || '',
-        },
-      } as BlockObjectRequest;
-    }
-
-    if (block.type === 'codeBlock') {
-      return {
-        object: 'block',
-        type: 'code',
-        code: {
-          rich_text: [
-            {
-              type: 'text',
-              text: {
-                content: block.content?.[0]?.text || '',
-                link: null,
-              },
-            },
-          ],
-          language: block.props?.language || 'plaintext',
-        },
-      } as BlockObjectRequest;
-    }
-
-    if (block.type === 'table') {
-      return {
-        object: 'block',
-        type: 'table',
-        table: {
-          table_width: block.content?.columnWidths?.length || 1,
-          has_column_header: false,
-          has_row_header: false,
-          children:
-            block.content?.rows?.map((row) => ({
-              type: 'table_row',
-              table_row: {
-                cells: row.cells.map((cell) =>
-                  cell.map((content) => ({
-                    type: 'text',
-                    text: { content: content.text || '', link: null },
-                  })),
-                ),
-              },
-            })) || [],
-        },
-      } as BlockObjectRequest;
-    }
-
-    return {
-      object: 'block',
-      type: notionType,
-      [notionType]: {
-        rich_text: [
-          {
-            type: 'text',
-            text: {
-              content: block.content?.[0]?.text || '',
-              link: null,
-            },
+    switch (block.type) {
+      case 'image':
+        return {
+          ...baseBlock,
+          type: 'embed',
+          embed: {
+            url: block.props?.url || '',
           },
-        ],
-      },
-    } as BlockObjectRequest;
+        } as BlockObjectRequest;
+
+      case 'codeBlock':
+        return {
+          ...baseBlock,
+          type: 'code',
+          code: {
+            rich_text: [
+              {
+                type: 'text',
+                text: {
+                  // @ts-expect-error
+                  content: block.content?.[0]?.text || '',
+                  link: null,
+                },
+              },
+            ],
+            language: block.props?.language || 'plaintext',
+          },
+        } as BlockObjectRequest;
+
+      case 'table':
+        return {
+          ...baseBlock,
+          type: 'table',
+          table: {
+            table_width: block.content?.columnWidths?.length || 1,
+            has_column_header: false,
+            has_row_header: false,
+            children:
+              block.content?.rows?.map((row) => ({
+                type: 'table_row',
+                table_row: {
+                  cells: row.cells.map((cell) =>
+                    // @ts-expect-error
+                    cell.map((content) => ({
+                      type: 'text',
+                      text: { content: content.text || '', link: null },
+                    })),
+                  ),
+                },
+              })) || [],
+          },
+        } as BlockObjectRequest;
+
+      case 'heading':
+        const headingLevel = block.props?.level || 1;
+        return {
+          ...baseBlock,
+          type: `heading_${headingLevel}`,
+          [`heading_${headingLevel}`]: {
+            rich_text: [createRichText(block.content?.[0])],
+            color: block.props?.textColor || 'default',
+          },
+        } as BlockObjectRequest;
+
+      default:
+        return {
+          ...baseBlock,
+          type: notionType,
+          [notionType]: {
+            // @ts-expect-error
+            rich_text: [createRichText(block.content?.[0])],
+            ...(block.type === 'checkListItem' && { checked: block.props?.checked || false }),
+          },
+        } as BlockObjectRequest;
+    }
   });
+};
+
+// 轉換noteBlock到notion的rich_text
+// 修改 createRichText 函數
+const createRichText = (content: any) => {
+  // 如果是 link 類型，使用其內容中的第一個文本元素
+  const textContent = content?.type === 'link' ? content?.content?.[0] : content;
+
+  return {
+    type: 'text',
+    text: {
+      content: textContent?.text || '',
+      // 如果是 link 類型，添加 link URL
+      link: content?.type === 'link' ? { url: content.href } : null,
+    },
+    annotations: {
+      bold: textContent?.styles?.bold || false,
+      italic: textContent?.styles?.italic || false,
+      strikethrough: textContent?.styles?.strike || false,
+      underline: textContent?.styles?.underline || false,
+      code: textContent?.styles?.code || false,
+      color: textContent?.styles?.textColor || 'default',
+    },
+  };
 };
